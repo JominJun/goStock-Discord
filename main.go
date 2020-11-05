@@ -6,7 +6,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"net/http"
+	"io/ioutil"
+	"encoding/json"
 
+	"github.com/dustin/go-humanize"
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -17,8 +21,19 @@ var (
 
 const prefix = "고"
 
+// CompanyResponse for Company API
+type CompanyResponse struct {
+	Result []struct {
+		Seq					int
+		Name				string
+		Description	string
+		StockValue	int
+	}
+	Status	int
+}
+
 func init() {
-	flag.StringVar(&Token, "t", "NzczMzQ1NTA3MjIwMjU4ODI2.X6H4IA.JgQ9DsxpMjoieR8JukG0L1nDWPo", "")
+	flag.StringVar(&Token, "t", "NzczMzQ1NTA3MjIwMjU4ODI2.X6H4IA.gn0aRgX641pCVJxWQHC_B_NsZHY", "")
 	flag.Parse()
 }
 
@@ -63,36 +78,45 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	if commandCheck(m.Content, "차트") {
+		req, err := http.NewRequest("GET", "http://api.localhost:8081/v1/company", nil)
+		if err != nil {
+			panic(err)
+		}
+
+		req.Header.Add("Authorization", "키")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+
+		bytes, _ := ioutil.ReadAll(resp.Body)
+
+		var res CompanyResponse
+		json.Unmarshal(bytes, &res)
+		
+		var companyFields []*discordgo.MessageEmbedField
+		for _, company := range(res.Result) {
+			companyField := discordgo.MessageEmbedField {
+				Name: company.Name,
+				Value: fmt.Sprintf("%s원", humanize.Comma(int64(company.StockValue))),
+				Inline: true,
+			}
+
+			companyFields = append(companyFields, &companyField)
+		}
+
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed {
-			Title: "Title",
-			Description: "Description",
 			Author: &discordgo.MessageEmbedAuthor {
-				Name: "Author Name",
+				Name: "GO! CHART",
 				URL: "https://github.com/JominJun",
 				IconURL: "https://imgur.com/roQhXpQ.png",
 			},
-			Image: &discordgo.MessageEmbedImage {
-				URL: "https://imgur.com/roQhXpQ.png",
-			},
-			Fields: []*discordgo.MessageEmbedField {
-				&discordgo.MessageEmbedField {
-					Name: "Field Name1",
-					Value: "Field Value1",
-				},
-				&discordgo.MessageEmbedField {
-					Name: "Field Name2",
-					Value: "Field Value2",
-				},
-			},
-			Footer: &discordgo.MessageEmbedFooter {
-				Text: "Footer Text",
-				IconURL: "https://imgur.com/roQhXpQ.png",
-			},
-			Color: 123456,
+			Fields: companyFields,
+			Color: 3463297,
 			Type: discordgo.EmbedTypeRich,
 		})
-
-		text := fmt.Sprintf("현재 채널: %s", m.ChannelID)
-		s.ChannelMessageSend(m.ChannelID, text)
 	}
 }

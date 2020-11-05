@@ -1,6 +1,9 @@
 # github.com/bwmarrin/discordgo v0.22.0
 ## explicit
 github.com/bwmarrin/discordgo
+# github.com/dustin/go-humanize v1.0.0
+## explicit
+github.com/dustin/go-humanize
 # github.com/gorilla/websocket v1.4.0
 github.com/gorilla/websocket
 # golang.org/x/crypto v0.0.0-20181030102418-4d3f4d9ffa16
